@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.impeccable/shots/
+.impeccable/config.local.json
+*.tsbuildinfo
+.impeccable/
+.superpowers/
