@@ -4,7 +4,7 @@
 
 A fictional communications-failure exercise for community-center, library, and other local-hub volunteers. A facilitator disables Internet or Phone, sees which fictional roles lose their path to the coordinator, tries alternate routes, and prints a one-page follow-up worksheet.
 
-Dead Air is for practice and discussion only. It does not send messages, handle real emergencies, or provide emergency guidance. All roles and locations are fictional. Written/spoken labels are simplified exercise assumptions, not accessibility guarantees. Worksheet values stay in page memory; nothing is sent or persisted.
+Dead Air is for practice and discussion only. It does not send messages, handle real emergencies, or provide emergency guidance. All roles and locations are fictional. Written/spoken labels are simplified exercise assumptions, not accessibility guarantees. Worksheet values stay in this page and are not sent to a Dead Air server or saved by the app. GitHub Pages may log standard visitor information, including IP addresses.
 
 ## Run locally
 
@@ -34,7 +34,7 @@ npm run build
 
 ## Safety and privacy
 
-Use fictional role labels only. Dead Air is not an emergency response product or accessibility assessment. Its written/spoken modes are simplified scenario assumptions. Worksheet owner and date values are not persisted.
+Use fictional role labels only. Dead Air is not an emergency response product or accessibility assessment. Its written/spoken modes are simplified scenario assumptions. Worksheet owner and date values are not persisted. GitHub Pages records visitor IP addresses in security logs.
 
 ## Kiro
 

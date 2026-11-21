@@ -34,7 +34,7 @@ A facilitator uses the app on a laptop or phone with a group. The app starts wit
 - Reachability is calculated by the Kiro-owned `communication-network` module over directed routes; two-way communication is represented by two routes.
 - The interface distinguishes roles reachable from the coordinator from isolated roles and incompatible route attempts.
 - A one-page print worksheet records the scenario, isolated roles, routes tried, mismatches, a fictional role owner, and a practice date.
-- App data stays in page memory; no runtime network requests, accounts, backend, analytics, telemetry, runtime AI, or external data are permitted.
+- App data stays in page memory; the app makes no runtime API requests and uses no accounts, backend, analytics, telemetry, runtime AI, or external data. The static host serves page assets and may log visitor IP addresses.
 - Total spend must remain $0. Do not depend on paid services, APIs, subscriptions, trials, required payment methods, custom domains, prize credits, or paid AI.
 - Judges must be able to use the demo without a Kiro account or payment.
 - Keep the implementation small enough for a solo advanced developer to finish in under 20 hours.
