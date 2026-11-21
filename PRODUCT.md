@@ -33,13 +33,15 @@ A facilitator uses the app on a laptop or phone with a group. The app starts wit
 - Route-mode compatibility is evaluated against fictional recipient-role modes before the Kiro-owned analyzer calculates reachability.
 - Active but incompatible routes remain visible as gaps and do not count as usable paths.
 - Delivery and acknowledgment routes are modeled separately. An acknowledgment route travels back toward the coordinator; the Kiro-owned `communication-network` module checks both directions without a second UI graph algorithm.
+- Before results are revealed, the facilitator records the group’s expected delivery and acknowledgment for each role. The app compares those forecasts with modeled paths in the fictional exercise.
+- Facilitators can save two alternate-route plans, compare delivery and acknowledgment gaps, and load either plan onto the switchboard. Both plans are recalculated after the second channel failure.
 - The interface distinguishes roles with delivery paths, roles with return acknowledgment paths, isolated roles, and incompatible route attempts.
 - Users can create or edit a fictional exercise, then import or export a bounded JSON package locally.
 - State-specific debrief questions and an editable next action turn the exercise into a one-page action sheet with objective gaps, a fictional role owner, and a practice date.
 - App data stays in page memory; the app makes no runtime API requests and uses no accounts, backend, analytics, telemetry, runtime AI, or external data. The static host serves page assets and may log visitor IP addresses.
 - Total spend must remain $0. Do not depend on paid services, APIs, subscriptions, trials, required payment methods, custom domains, prize credits, or paid AI.
-- Judges must be able to use the demo without a Kiro account or payment.
-- Keep the implementation small enough to explain in a demo under three minutes.
+- The public application must work without a Kiro account or payment.
+- A facilitator can run the exercise at their own pace; the software does not impose a countdown.
 - Open source repository and license are required for the hackathon submission.
 
 ## Brand Commitments
@@ -48,7 +50,7 @@ The product is named Dead Air. The user selected an analog switchboard over a co
 
 ## Evidence on Hand
 
-The sample community-center map and all demonstration roles are fictional. No real user data or external proof assets have been provided. Do not invent testimonials, real-world outcomes, or emergency guidance.
+The sample community-center map and all sample roles are fictional. No real user data or external proof assets have been provided. Do not invent testimonials, real-world outcomes, or emergency guidance.
 
 ## Product Principles
 
@@ -56,4 +58,4 @@ The sample community-center map and all demonstration roles are fictional. No re
 - Treat route fit as a simplified fictional rehearsal dimension, not an accessibility audit or real-world guarantee.
 - Keep the exercise focused on discussion and learning, not operational emergency response.
 - Use fictional data and avoid collecting personal information.
-- Keep the demo useful without network access, accounts, or payment.
+- Keep the exercise usable without runtime network access, accounts, or payment.

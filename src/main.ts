@@ -1,8 +1,7 @@
 import { channels, coordinatorId, roles as sampleRoles, routes as sampleRoutes } from "./data/sample-map";
 import { exerciseScenarios, type ExercisePackage } from "./data/exercise-scenarios";
-import { analyzeCommunicationNetwork } from "./domain/communication-network";
 import { getDebriefPrompts } from "./domain/debrief-prompts";
-import { prepareDrillRoutes } from "./domain/drill-analysis";
+import { analyzeExercisePlan } from "./domain/exercise-analysis";
 import { parseExercisePackage, serializeExercisePackage } from "./domain/exercise-package";
 import type { CommunicationMode, CommunicationRoute, Role } from "./data/sample-map";
 import "@fontsource/ibm-plex-sans/400.css";
@@ -27,6 +26,9 @@ let activePhase: ExercisePhase = "brief";
 let furthestPhaseIndex = 0;
 let failedChannelIds = new Set<string>([exercise.initialFailedChannelId]);
 let activeAlternateRouteIds = new Set<string>();
+let forecast: Record<string, { delivery: string; acknowledgment: string }> = {};
+let outageRevealed = false;
+let backupPlans: { A: string[] | null; B: string[] | null } = { A: null, B: null };
 let injectRevealed = false;
 let editorOpen = false;
 let compactMap = window.matchMedia("(max-width: 560px)").matches;
@@ -92,39 +94,7 @@ function routePath(route: CommunicationRoute) {
 }
 
 function analyze() {
-  try {
-    const prepared = prepareDrillRoutes(exercise.roles, exercise.routes, [...failedChannelIds], [...activeAlternateRouteIds]);
-    const deliveryActiveAlternates = prepared.deliveryRoutes.filter((route) => route.alternate).map((route) => route.id);
-    const acknowledgementActiveAlternates = prepared.acknowledgementRoutes.filter((route) => route.alternate).map((route) => route.id);
-    const input = { roles: exercise.roles, coordinatorId: exercise.coordinatorId, failedChannelId: null, activeAlternateRouteIds: deliveryActiveAlternates };
-    const acknowledgementResults = exercise.roles.map((role) => analyzeCommunicationNetwork({
-      ...input,
-      coordinatorId: role.id,
-      routes: prepared.acknowledgementRoutes,
-      activeAlternateRouteIds: acknowledgementActiveAlternates,
-    }));
-    const acknowledgmentReachableRoleIds = exercise.roles
-      .filter((role, index) => role.id === exercise.coordinatorId || acknowledgementResults[index].reachableRoleIds.includes(exercise.coordinatorId))
-      .map((role) => role.id);
-    return {
-      delivery: analyzeCommunicationNetwork({ ...input, routes: prepared.deliveryRoutes }),
-      acknowledgement: {
-        reachableRoleIds: acknowledgmentReachableRoleIds,
-        isolatedRoleIds: exercise.roles.filter((role) => !acknowledgmentReachableRoleIds.includes(role.id)).map((role) => role.id),
-      },
-      deliveryRoutes: prepared.deliveryRoutes,
-      acknowledgementRoutes: prepared.acknowledgementRoutes,
-      error: "",
-    };
-  } catch (error) {
-    return {
-      delivery: { reachableRoleIds: [], isolatedRoleIds: exercise.roles.map((role) => role.id) },
-      acknowledgement: { reachableRoleIds: [], isolatedRoleIds: exercise.roles.map((role) => role.id) },
-      deliveryRoutes: [],
-      acknowledgementRoutes: [],
-      error: error instanceof Error ? error.message : "The exercise could not be analyzed.",
-    };
-  }
+  return analyzeExercisePlan(exercise.roles, exercise.routes, exercise.coordinatorId, [...failedChannelIds], [...activeAlternateRouteIds]);
 }
 
 function statusForRole(role: Role, reachableIds: Set<string>, mismatchRoleIds: Set<string>, coordinatorRoleId: string, acknowledgment = false) {
@@ -247,8 +217,47 @@ function selectedAlternates() {
   }).join("");
 }
 
+function forecastIsComplete() {
+  return exercise.roles.filter((role) => role.id !== exercise.coordinatorId).every((role) => {
+    const entry = forecast[role.id];
+    return (entry?.delivery === "yes" || entry?.delivery === "no") && (entry?.acknowledgment === "yes" || entry?.acknowledgment === "no");
+  });
+}
+
+function predictionSelect(roleId: string, kind: "delivery" | "acknowledgment", label: string) {
+  const value = forecast[roleId]?.[kind] ?? "";
+  return `<label class="forecast-select"><span class="visually-hidden">${escapeHtml(label)} for ${escapeHtml(rolesById().get(roleId)?.label ?? roleId)}</span><select data-forecast-role="${escapeHtml(roleId)}" data-forecast-kind="${kind}" aria-label="${escapeHtml(label)} for ${escapeHtml(rolesById().get(roleId)?.label ?? roleId)}"><option value="" ${value === "" ? "selected" : ""}>Choose</option><option value="yes" ${value === "yes" ? "selected" : ""}>Yes</option><option value="no" ${value === "no" ? "selected" : ""}>No</option></select></label>`;
+}
+
+function renderForecast(result: ReturnType<typeof analyze>) {
+  const participants = exercise.roles.filter((role) => role.id !== exercise.coordinatorId);
+  if (!outageRevealed) return `<section class="forecast-panel" aria-labelledby="forecast-title"><div><p class="phase-label">BEFORE THE BOARD LIGHTS UP</p><h3 id="forecast-title">What does the group expect?</h3><p>For each role, predict whether the update can reach them and whether they can send an acknowledgment back.</p></div><div class="forecast-table"><div class="forecast-row forecast-row--head"><span>Fictional role</span><span>Delivery?</span><span>Can acknowledge?</span></div>${participants.map((role) => `<div class="forecast-row"><strong>${escapeHtml(role.label)}</strong>${predictionSelect(role.id, "delivery", "Expected delivery")}${predictionSelect(role.id, "acknowledgment", "Expected acknowledgment")}</div>`).join("")}</div><button class="button" type="button" id="reveal-results" ${forecastIsComplete() ? "" : "disabled"}>Reveal modeled results</button><p class="forecast-note">This is a discussion forecast. The result only describes routes in this fictional exercise.</p></section>`;
+
+  const deliveryIds = new Set(result.delivery.reachableRoleIds);
+  const acknowledgmentIds = new Set(result.acknowledgement.reachableRoleIds);
+  return `<section class="forecast-result" aria-labelledby="forecast-result-title" aria-live="polite"><div class="forecast-result-head"><div><p class="phase-label">FORECAST / MODELED ROUTES</p><h3 id="forecast-result-title" tabindex="-1">Where did the group’s prediction differ?</h3></div><p>These are modeled paths in the exercise, not proof that a message was received.</p></div><div class="forecast-table"><div class="forecast-row forecast-row--head"><span>Role</span><span>Delivery</span><span>Acknowledgment</span></div>${participants.map((role) => {
+    const entry = forecast[role.id];
+    const deliveryMatches = (entry?.delivery === "yes") === deliveryIds.has(role.id);
+    const acknowledgmentMatches = (entry?.acknowledgment === "yes") === acknowledgmentIds.has(role.id);
+    return `<div class="forecast-row"><strong>${escapeHtml(role.label)}</strong><span class="forecast-verdict ${deliveryMatches ? "forecast-verdict--match" : "forecast-verdict--gap"}"><b>${deliveryMatches ? "MATCH" : "DIFFERENCE"}</b><small>Expected ${entry?.delivery === "yes" ? "yes" : "no"} · modeled ${deliveryIds.has(role.id) ? "path" : "no path"}</small></span><span class="forecast-verdict ${acknowledgmentMatches ? "forecast-verdict--match" : "forecast-verdict--gap"}"><b>${acknowledgmentMatches ? "MATCH" : "DIFFERENCE"}</b><small>Expected ${entry?.acknowledgment === "yes" ? "yes" : "no"} · modeled ${acknowledgmentIds.has(role.id) ? "path" : "no path"}</small></span></div>`;
+  }).join("")}</div></section>`;
+}
+
+function planSummary(plan: string[] | null, label: "A" | "B") {
+  if (!plan) return `<article class="plan-card plan-card--empty"><p class="phase-label">PLAN ${label}</p><h4>No routes saved</h4><p>Set the backup switches above, then save this route set as Plan ${label}.</p><button class="button button--small" type="button" data-save-plan="${label}">Save current routes as Plan ${label}</button></article>`;
+  const analysis = analyzeExercisePlan(exercise.roles, exercise.routes, exercise.coordinatorId, [...failedChannelIds], plan);
+  const participants = exercise.roles.filter((role) => role.id !== exercise.coordinatorId);
+  const delivered = new Set(analysis.delivery.reachableRoleIds);
+  const acknowledged = new Set(analysis.acknowledgement.reachableRoleIds);
+  const planNames = plan.map((id) => exercise.routes.find((route) => route.id === id)?.label).filter((name): name is string => Boolean(name));
+  const deliveryGaps = participants.filter((role) => !delivered.has(role.id)).map((role) => role.label);
+  const acknowledgmentGaps = participants.filter((role) => !acknowledged.has(role.id)).map((role) => role.label);
+  return `<article class="plan-card"><p class="phase-label">PLAN ${label}</p><h4>${planNames.length ? escapeHtml([...new Set(planNames)].join(" · ")) : "No backup routes"}</h4><div class="plan-counts"><span><b>${participants.length - deliveryGaps.length}/${participants.length}</b> delivery</span><span><b>${participants.length - acknowledgmentGaps.length}/${participants.length}</b> acknowledgment</span></div><p><strong>Delivery gaps:</strong> ${escapeHtml(deliveryGaps.join(", ") || "None")}</p><p><strong>Acknowledgment gaps:</strong> ${escapeHtml(acknowledgmentGaps.join(", ") || "None")}</p><div class="plan-card-actions"><button class="text-button" type="button" data-load-plan="${label}">Use Plan ${label} on board</button><button class="text-button" type="button" data-save-plan="${label}">Replace Plan ${label}</button></div></article>`;
+}
+
 function navigateToPhase(phase: ExercisePhase, advance = false) {
   const targetIndex = phases.findIndex((item) => item.id === phase);
+  if (phase === "response" && !outageRevealed) return;
   if (phase === "debrief" && !injectRevealed) return;
   if (advance) furthestPhaseIndex = Math.max(furthestPhaseIndex, targetIndex);
   if (targetIndex > furthestPhaseIndex) return;
@@ -273,6 +282,9 @@ function selectExercise(id: string) {
 function resetOutage() {
   failedChannelIds = new Set([exercise.initialFailedChannelId]);
   activeAlternateRouteIds.clear();
+  forecast = {};
+  outageRevealed = false;
+  backupPlans = { A: null, B: null };
   injectRevealed = false;
   furthestPhaseIndex = Math.min(furthestPhaseIndex, phases.findIndex((phase) => phase.id === "response"));
   if (activePhase === "inject" || activePhase === "debrief") activePhase = "response";
@@ -462,9 +474,15 @@ function exportExercise() {
 
 function render() {
   const result = analyze();
+  const forecastBaseline = analyzeExercisePlan(exercise.roles, exercise.routes, exercise.coordinatorId, [exercise.initialFailedChannelId], []);
   const deliveryReachable = new Set(result.delivery.reachableRoleIds);
   const acknowledgmentReachable = new Set(result.acknowledgement.reachableRoleIds);
   const participantRoles = exercise.roles.filter((role) => role.id !== exercise.coordinatorId);
+  const baselineDelivery = new Set(forecastBaseline.delivery.reachableRoleIds);
+  const baselineAcknowledgment = new Set(forecastBaseline.acknowledgement.reachableRoleIds);
+  const forecastDifferenceCount = participantRoles.reduce((total, role) => total
+    + Number((forecast[role.id]?.delivery === "yes") !== baselineDelivery.has(role.id))
+    + Number((forecast[role.id]?.acknowledgment === "yes") !== baselineAcknowledgment.has(role.id)), 0);
   const unreachableRoles = participantRoles.filter((role) => !deliveryReachable.has(role.id));
   const unconfirmedRoles = participantRoles.filter((role) => deliveryReachable.has(role.id) && !acknowledgmentReachable.has(role.id));
   const usableDeliveryIds = new Set(result.deliveryRoutes.map((route) => route.id));
@@ -493,17 +511,17 @@ function render() {
   const alternateControls = selectedAlternates() || `<p class="empty-routes">No backup routes yet. Add a route in the exercise editor.</p>`;
   const phaseIndex = phases.findIndex((phase) => phase.id === activePhase);
   const phaseTitle: Record<ExercisePhase, string> = { brief: "Set the scene.", outage: "Break the first line.", response: "Patch in another route.", inject: "The signal drops again.", debrief: "What will the group change?" };
-  const phaseDescription: Record<ExercisePhase, string> = { brief: "Choose a fictional exercise or shape one for this session.", outage: "Remove one channel and inspect the modeled delivery and return paths.", response: "Choose backup routes. A possible route does not prove anyone received the update.", inject: "Reveal a second channel failure when the room is ready.", debrief: "Compare the map with the objective, then record one next action." };
+  const phaseDescription: Record<ExercisePhase, string> = { brief: "Choose a fictional exercise or shape one for this session.", outage: "Make a group forecast before the modeled delivery and return paths are revealed.", response: "Build two backup plans, compare their gaps, and choose which one to try.", inject: "Reveal a second channel failure when the room is ready.", debrief: "Compare the map with the objective, then record one next action." };
 
   const phaseBody = activePhase === "brief" ? `
     <div class="brief-layout"><section class="scenario-picker"><header><div><h3>Choose or shape an exercise</h3><p>Starter scenarios are fictional. Edit, export, or import a local exercise.</p></div><button class="button button--small" type="button" id="new-exercise">Create a copy</button></header><div class="scenario-list">${scenarioChoices}</div><div class="scenario-file-actions"><button class="text-button" type="button" id="import-exercise">Import JSON</button><button class="text-button" type="button" id="export-exercise">Export this exercise</button><input class="visually-hidden" type="file" id="exercise-file" accept="application/json,.json"><span class="file-status" role="status">${escapeHtml(importStatus)}</span></div></section><aside class="readout"><div class="readout-heading"><span class="signal-led" aria-hidden="true"></span><h3>Read this to the room</h3></div><blockquote>${escapeHtml(exercise.readAloud)}</blockquote><div class="objective-readout"><span>EXERCISE OBJECTIVE</span><p>${escapeHtml(exercise.objective)}</p></div><div class="facilitator-cue"><strong>Then ask</strong><p>${escapeHtml(exercise.discussionCue)}</p></div><button type="button" class="text-button" id="toggle-editor">${editorOpen ? "Close exercise editor" : "Edit this fictional exercise"}</button></aside></div>
-    ${renderEditor()}<div class="brief-map">${map}</div>` : activePhase === "outage" ? `
+    ${renderEditor()}` : activePhase === "outage" ? `
     <div class="phase-intro-row"><div><p class="phase-label">THE FIRST INTERRUPTION</p><h3>${escapeHtml(exercise.title)}</h3><p>${escapeHtml(exercise.setup)}</p><p class="objective-line"><strong>Objective:</strong> ${escapeHtml(exercise.objective)}</p></div><label class="channel-control">First channel to fail<select id="initial-channel">${channelOptions(exercise.initialFailedChannelId)}</select></label></div>
-    <div class="outage-layout">${map}<aside class="signal-report"><p class="phase-label">MODELED RESULT</p><h3>${escapeHtml(resultLabel)}</h3><p>${result.error ? escapeHtml(result.error) : `Failed channel: ${escapeHtml(currentFailure)}.`}</p><div class="role-ledger"><div><strong>No modeled delivery path</strong><span>${unreachableRoles.length ? escapeHtml(unreachableRoles.map((role) => role.label).join(", ")) : "None"}</span></div><div><strong>Delivery, no modeled acknowledgment</strong><span>${unconfirmedRoles.length ? escapeHtml(unconfirmedRoles.map((role) => role.label).join(", ")) : "None"}</span></div></div></aside></div>` : activePhase === "response" ? `
+    ${renderForecast(forecastBaseline)}${outageRevealed ? `<div class="outage-layout">${map}<aside class="signal-report"><p class="phase-label">MODELED RESULT</p><h3>${escapeHtml(resultLabel)}</h3><p>${result.error ? escapeHtml(result.error) : `Failed channel: ${escapeHtml(currentFailure)}.`}</p><div class="role-ledger"><div><strong>No modeled delivery path</strong><span>${unreachableRoles.length ? escapeHtml(unreachableRoles.map((role) => role.label).join(", ")) : "None"}</span></div><div><strong>Delivery, no modeled acknowledgment</strong><span>${unconfirmedRoles.length ? escapeHtml(unconfirmedRoles.map((role) => role.label).join(", ")) : "None"}</span></div></div></aside></div>` : ""}` : activePhase === "response" ? `
     <div class="phase-intro-row"><div><p class="phase-label">THE GROUP’S RESPONSE</p><h3>Which route can carry the update?</h3><p>Try a backup and compare delivery with the separate return acknowledgment path.</p></div><div class="decision-stamp ${hasGap ? "decision-stamp--gap" : ""}"><span class="signal-led" aria-hidden="true"></span>${escapeHtml(resultLabel)}</div></div>
-    <div class="response-layout"><div>${map}<div class="impact" aria-live="polite"><strong>${escapeHtml(resultLabel)}</strong><p>${escapeHtml(result.error || `Delivery gaps: ${unreachableRoles.map((role) => role.label).join(", ") || "none"}. No modeled acknowledgment path: ${unconfirmedRoles.map((role) => role.label).join(", ") || "none"}.`)}</p></div></div><fieldset class="route-console"><legend>Activate backup routes</legend><p class="console-help">The board updates as you change a route.</p><div class="route-list">${alternateControls}</div><div class="console-note"><span class="legend-line legend-line--ack"></span><p>Dashed return paths show how an acknowledgment could travel back through the modeled route.</p></div></fieldset></div>` : activePhase === "inject" ? `
+    <div class="response-layout"><div>${map}<div class="impact" aria-live="polite"><strong>${escapeHtml(resultLabel)}</strong><p>${escapeHtml(result.error || `Delivery gaps: ${unreachableRoles.map((role) => role.label).join(", ") || "none"}. No modeled acknowledgment path: ${unconfirmedRoles.map((role) => role.label).join(", ") || "none"}.`)}</p></div></div><fieldset class="route-console"><legend>Build a backup plan</legend><p class="console-help">Select routes. Compare two plans before choosing one for the board.</p><div class="route-list">${alternateControls}</div><div class="console-note"><span class="legend-line legend-line--ack"></span><p>Dashed return paths show how an acknowledgment could travel back through the modeled route.</p></div></fieldset></div><section class="plan-comparison" aria-labelledby="plan-comparison-title"><div class="plan-comparison-heading"><div><p class="phase-label">COMPARE ROUTE CHOICES</p><h3 id="plan-comparison-title">Which backup leaves fewer gaps?</h3></div><p>Both plans use the current fictional channel failures and route assumptions.</p></div><div class="plan-grid">${planSummary(backupPlans.A, "A")}${planSummary(backupPlans.B, "B")}</div></section>` : activePhase === "inject" ? `
     <div class="inject-layout"><section class="inject-card ${injectRevealed ? "inject-card--revealed" : ""}"><div class="inject-topline"><span class="inject-signal" aria-hidden="true"></span><span>${injectRevealed ? "SECOND FAILURE ACTIVE" : "FACILITATOR CONTROL"}</span></div><h3>${escapeHtml(exercise.inject.title)}</h3><p>${injectRevealed ? escapeHtml(exercise.inject.body) : "Pause the room. Let the group explain which backup they would try, then reveal the next event."}</p>${injectRevealed ? `<p class="inject-failure">${escapeHtml(channelLabel(exercise.inject.failedChannelId))} is now also unavailable.</p>` : `<button type="button" class="button button--next" id="reveal-inject">Reveal second failure<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button>`}</section><aside class="inject-guidance"><h3>Facilitator note</h3><p>Let the group make a route choice before you reveal this card. The inject is fictional and does not simulate an actual emergency.</p><p><strong>Objective:</strong> ${escapeHtml(exercise.objective)}</p></aside></div>${injectRevealed ? `<div class="post-inject-result"><p class="phase-label">AFTER THE SECOND FAILURE</p><h3>${escapeHtml(resultLabel)}</h3><p>${escapeHtml(currentFailure)} are modeled as unavailable. Revisit both directions of the route.</p></div>${map}` : ""}` : `
-    <div class="debrief-outcome"><div class="outcome-lamp ${hasGap ? "outcome-lamp--gap" : ""}"><span class="signal-led ${hasGap ? "signal-led--alert" : ""}" aria-hidden="true"></span><span>${escapeHtml(resultLabel)}</span></div><p><strong>Objective:</strong> ${escapeHtml(exercise.objective)}</p></div>
+    <div class="debrief-outcome"><div class="outcome-lamp ${hasGap ? "outcome-lamp--gap" : ""}"><span class="signal-led ${hasGap ? "signal-led--alert" : ""}" aria-hidden="true"></span><span>${escapeHtml(resultLabel)}</span></div><p><strong>Objective:</strong> ${escapeHtml(exercise.objective)}</p><p class="forecast-summary">The group’s first-outage forecast differed from the modeled routes in ${forecastDifferenceCount} of ${participantRoles.length * 2} delivery and acknowledgment checks.</p></div>
     <div class="debrief-layout"><section class="room-questions"><h3>Talk it through</h3><ol>${prompts.map((prompt) => `<li>${escapeHtml(prompt)}</li>`).join("")}</ol><p class="scenario-cue">${escapeHtml(exercise.discussionCue)}</p></section><section class="action-record"><h3>Record the next practice</h3><label for="next-action">What will the group change or practice?</label><textarea id="next-action" rows="3" maxlength="280" placeholder="Example: add a written way to confirm room changes before doors open">${escapeHtml(session.action)}</textarea><div class="worksheet-fields"><div class="worksheet-field"><label for="owner-role">Fictional role to lead it</label><select id="owner-role"><option value="">Choose a role</option>${exercise.roles.filter((role) => role.id !== exercise.coordinatorId).map((role) => `<option value="${escapeHtml(role.id)}" ${role.id === session.ownerId ? "selected" : ""}>${escapeHtml(role.label)}</option>`).join("")}</select></div><div class="worksheet-field"><label for="practice-date">Practice date</label><input id="practice-date" type="date" value="${escapeHtml(session.practiceDate)}"></div><div class="worksheet-field"><label for="action-status">Action status</label><select id="action-status"><option ${session.actionStatus === "Planned" ? "selected" : ""}>Planned</option><option ${session.actionStatus === "In progress" ? "selected" : ""}>In progress</option><option ${session.actionStatus === "Done" ? "selected" : ""}>Done</option></select></div></div><button class="button button--print" id="print-plan" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7z"/></svg> Print action sheet</button></section></div>
     <section class="print-sheet" id="follow-up"><header><p class="sheet-kicker">DEAD AIR · FICTIONAL EXERCISE</p><h3>After-action sheet</h3><p>${escapeHtml(exercise.title)} · ${escapeHtml(currentFailure)} unavailable</p></header><div class="sheet-objective"><h4>Objective</h4><p>${escapeHtml(exercise.objective)}</p></div><dl class="sheet-grid"><div><dt>Roles with a modeled delivery path</dt><dd>${escapeHtml(exercise.roles.filter((role) => role.id !== exercise.coordinatorId && deliveryReachable.has(role.id)).map((role) => role.label).join(", ") || "None")}</dd></div><div><dt>No modeled delivery path</dt><dd>${escapeHtml(unreachableRoles.map((role) => role.label).join(", ") || "None")}</dd></div><div><dt>Delivery without modeled acknowledgment</dt><dd>${escapeHtml(unconfirmedRoles.map((role) => role.label).join(", ") || "None")}</dd></div><div><dt>Routes that did not fit</dt><dd>${escapeHtml(mismatchLabels.join(" · ") || "None identified")}</dd></div></dl><div class="sheet-action"><h4>Next practice action</h4><p class="action-print-value">${escapeHtml(session.action) || "Write one route, check, or adjustment to practice."}</p><div class="sheet-assignments"><div><h4>Fictional role owner</h4><p>${escapeHtml(ownerLabel)}</p></div><div><h4>Practice date</h4><p>${escapeHtml(session.practiceDate || "Write a date")}</p></div><div><h4>Status</h4><p>${escapeHtml(session.actionStatus)}</p></div></div></div><div class="sheet-prompts"><h4>Questions for next time</h4><ol>${prompts.map((prompt) => `<li>${escapeHtml(prompt)}</li>`).join("")}</ol></div><p class="sheet-foot">A modeled route does not prove receipt or acknowledgment. This is a fictional discussion tool, not emergency or accessibility guidance.</p></section>`;
 
@@ -514,7 +532,7 @@ function render() {
   const nextButton = activePhase === "inject" && !injectRevealed
     ? ""
     : phaseIndex < phases.length - 1
-      ? `<button type="button" class="button button--next" data-phase="${phases[phaseIndex + 1].id}" data-advance="true">${phaseIndex === 0 ? "Begin the outage" : phaseIndex === 1 ? "Choose a backup route" : phaseIndex === 2 ? "Continue to inject" : "Debrief the result"}<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button>`
+      ? `<button type="button" class="button button--next" data-phase="${phases[phaseIndex + 1].id}" data-advance="true" ${activePhase === "outage" && !outageRevealed ? "disabled" : ""}>${phaseIndex === 0 ? "Begin the outage" : phaseIndex === 1 ? "Choose a backup route" : phaseIndex === 2 ? "Continue to inject" : "Debrief the result"}<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button>`
       : `<span class="safety-note">Practice only · no real message is sent</span>`;
 
   app.innerHTML = `<header class="topbar"><a class="brand" href="#" aria-label="Dead Air home"><svg class="brand-mark" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg> DEAD AIR</a><span class="exercise-tag"><span class="live-dot"></span> SIGNAL ROOM</span></header><main><section class="masthead"><div><h1>Can the message<br><em>get there—and back?</em></h1><p>Run a fictional communications drill. Test the route in both directions.</p></div><span class="session-time">FACILITATOR-LED</span></section><nav class="phase-rail" aria-label="Exercise steps">${phaseNav}</nav><section class="session-panel" aria-labelledby="phase-title"><header class="phase-heading"><p class="phase-label">PHASE 0${phaseIndex + 1} / 05</p><h2 id="phase-title" tabindex="-1">${phaseTitle[activePhase]}</h2><p>${phaseDescription[activePhase]}</p></header><div class="phase-content">${phaseBody}</div><footer class="phase-footer">${phaseIndex > 0 ? `<button type="button" class="text-button" data-phase="${phases[phaseIndex - 1].id}">Back to ${phases[phaseIndex - 1].label.toLowerCase()}</button>` : `<span class="safety-note">Fictional roles only · no real messages are sent</span>`}${nextButton}</footer></section><footer class="site-footer"><span>DEAD AIR · PRACTICE, NOT RESPONSE</span><span>Data stays in this page unless you export a file. GitHub Pages may log standard visitor data.</span></footer></main>`;
@@ -556,6 +574,33 @@ function render() {
   document.querySelector<HTMLButtonElement>("#import-exercise")?.addEventListener("click", () => document.querySelector<HTMLInputElement>("#exercise-file")?.click());
   document.querySelector<HTMLInputElement>("#exercise-file")?.addEventListener("change", importExercise);
   document.querySelector<HTMLButtonElement>("#export-exercise")?.addEventListener("click", exportExercise);
+  document.querySelectorAll<HTMLSelectElement>("[data-forecast-role]").forEach((select) => select.addEventListener("change", (event) => {
+    const control = event.currentTarget as HTMLSelectElement;
+    const roleId = control.dataset.forecastRole!;
+    forecast[roleId] ??= { delivery: "", acknowledgment: "" };
+    forecast[roleId][control.dataset.forecastKind as "delivery" | "acknowledgment"] = control.value;
+    render();
+    document.querySelector<HTMLSelectElement>(`[data-forecast-role="${roleId}"][data-forecast-kind="${control.dataset.forecastKind}"]`)?.focus();
+  }));
+  document.querySelector<HTMLButtonElement>("#reveal-results")?.addEventListener("click", () => {
+    if (!forecastIsComplete()) return;
+    outageRevealed = true;
+    render();
+    document.querySelector<HTMLElement>("#forecast-result-title")?.focus();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-save-plan]").forEach((button) => button.addEventListener("click", () => {
+    const plan = button.dataset.savePlan as "A" | "B";
+    backupPlans[plan] = [...activeAlternateRouteIds];
+    render();
+    document.querySelector<HTMLButtonElement>(`[data-save-plan="${plan}"]`)?.focus();
+  }));
+  document.querySelectorAll<HTMLButtonElement>("[data-load-plan]").forEach((button) => button.addEventListener("click", () => {
+    const plan = backupPlans[button.dataset.loadPlan as "A" | "B"];
+    if (!plan) return;
+    activeAlternateRouteIds = new Set(plan);
+    render();
+    document.querySelector<HTMLInputElement>("[data-alternate-group]")?.focus();
+  }));
   document.querySelectorAll<HTMLInputElement>("[data-alternate-group]").forEach((input) => input.addEventListener("change", () => {
     exercise.routes.filter((route) => route.alternate && route.channelId === input.dataset.alternateGroup).forEach((route) => input.checked ? activeAlternateRouteIds.add(route.id) : activeAlternateRouteIds.delete(route.id));
     render();
