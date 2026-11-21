@@ -99,4 +99,4 @@
 - [x] Inspect desktop, phone widths, keyboard focus, reduced-motion rules, and print CSS; fix visible defects.
 - [x] Document the editor, JSON format, no-network operation, and the three-minute judge path.
 - [x] Run `npm test`, `npm run build`, and static no-network review.
-- [ ] Commit and push only after checks pass; verify the deployment is successful.
+- [x] Commit and push after checks pass; verify the public deployment and backup-route flow.
