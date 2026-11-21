@@ -75,4 +75,4 @@
 - [x] Keep the print sheet to one page and hide navigation/controls.
 - [x] Update the README’s under-three-minute judge path and describe what the app produces; keep price/privacy claims accurate.
 - [x] Run `npm test`, `npm run build`, and inspect the desktop flow and print stylesheet.
-- [ ] Check the public Pages deployment succeeds and the live application loads the new app assets.
+- [x] Check the public Pages deployment succeeds and the live application loads the new app assets.
