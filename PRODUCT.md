@@ -28,17 +28,18 @@ A facilitator uses the app on a laptop or phone with a group. The app starts wit
 
 ## Capabilities and Constraints
 
-- A four-phase facilitator flow supplies two scenario cards with read-aloud context and a discussion cue, then guides the group through channel failure, route choice, and debrief.
-- The facilitator can choose an Internet or Phone failure and activate a grouped paper or spoken alternate strategy.
+- A five-phase facilitator flow supplies fictional scenario cards with read-aloud context and a discussion cue, then guides the group through a first outage, route choice, a controlled second failure, and debrief.
+- The facilitator can choose a failed channel and activate grouped paper or spoken alternate routes.
 - Route-mode compatibility is evaluated against fictional recipient-role modes before the Kiro-owned analyzer calculates reachability.
 - Active but incompatible routes remain visible as gaps and do not count as usable paths.
-- Reachability is calculated by the Kiro-owned `communication-network` module over directed routes; two-way communication is represented by two routes.
-- The interface distinguishes roles reachable from the coordinator from isolated roles and incompatible route attempts.
-- State-specific debrief questions and an editable next action turn the exercise into a one-page after-action sheet with the scenario, connected and isolated roles, routes tried, mismatches, a fictional role owner, and a practice date.
+- Delivery and acknowledgment routes are modeled separately. An acknowledgment route travels back toward the coordinator; the Kiro-owned `communication-network` module checks both directions without a second UI graph algorithm.
+- The interface distinguishes roles with delivery paths, roles with return acknowledgment paths, isolated roles, and incompatible route attempts.
+- Users can create or edit a fictional exercise, then import or export a bounded JSON package locally.
+- State-specific debrief questions and an editable next action turn the exercise into a one-page action sheet with objective gaps, a fictional role owner, and a practice date.
 - App data stays in page memory; the app makes no runtime API requests and uses no accounts, backend, analytics, telemetry, runtime AI, or external data. The static host serves page assets and may log visitor IP addresses.
 - Total spend must remain $0. Do not depend on paid services, APIs, subscriptions, trials, required payment methods, custom domains, prize credits, or paid AI.
 - Judges must be able to use the demo without a Kiro account or payment.
-- Keep the implementation small enough for a solo advanced developer to finish in under 20 hours.
+- Keep the implementation small enough to explain in a demo under three minutes.
 - Open source repository and license are required for the hackathon submission.
 
 ## Brand Commitments

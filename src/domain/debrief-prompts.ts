@@ -1,15 +1,24 @@
-export function getDebriefPrompts(
-  isolatedRoleLabels: string[],
-  mismatchedRouteLabels: string[],
-) {
-  const outcomePrompt = isolatedRoleLabels.length === 0
-    ? "What confirmed that every role received the update?"
-    : isolatedRoleLabels.length === 1
-      ? `How would ${isolatedRoleLabels[0]} know the update never arrived?`
-      : "Which isolated role would you check on first, and why?";
-  const mismatchPrompt = mismatchedRouteLabels.length > 0
-    ? `Which written backup could reach people missed by ${mismatchedRouteLabels.join(", ")}?`
-    : "What would make this backup route easier to repeat next time?";
+export type DebriefContext = {
+  objective: string;
+  unreachableRoleLabels: string[];
+  unconfirmedRoleLabels: string[];
+  mismatchedRouteLabels: string[];
+};
 
-  return [outcomePrompt, mismatchPrompt, "Who will check this route at the next practice?"];
+export function getDebriefPrompts({
+  objective,
+  unreachableRoleLabels,
+  unconfirmedRoleLabels,
+  mismatchedRouteLabels,
+}: DebriefContext) {
+  const outcomePrompt = unreachableRoleLabels.length
+    ? `Which route change could give ${unreachableRoleLabels.join(", ")} a modeled delivery path?`
+    : unconfirmedRoleLabels.length
+      ? `A modeled delivery path exists for ${unconfirmedRoleLabels.join(", ")}, but no acknowledgment path is modeled. How could the group close that loop?`
+      : "The model shows delivery and acknowledgment paths. What would the group still need to check in discussion?";
+  const objectivePrompt = mismatchedRouteLabels.length
+    ? `How do ${mismatchedRouteLabels.join(", ")} affect this objective: ${objective}?`
+    : `Did the modeled routes meet this objective: ${objective}?`;
+
+  return [outcomePrompt, objectivePrompt, "What action will be practiced, who will own it, and when will the group revisit it?"];
 }

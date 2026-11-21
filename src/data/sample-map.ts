@@ -17,6 +17,8 @@ export type CommunicationRoute = {
   channelId: string;
   alternate: boolean;
   mode?: CommunicationMode;
+  acknowledgementChannelId?: string;
+  acknowledgementMode?: CommunicationMode;
 };
 
 export const coordinatorId = "coordinator";
@@ -30,10 +32,10 @@ export const roles: Role[] = [
 ];
 
 export const routes: CommunicationRoute[] = [
-  { id: "coord-welcome", fromRoleId: "coordinator", toRoleId: "welcome", label: "Group chat", channelId: "internet", alternate: false, mode: "written" },
-  { id: "welcome-programs", fromRoleId: "welcome", toRoleId: "programs", label: "Group chat", channelId: "internet", alternate: false, mode: "written" },
-  { id: "coord-pantry", fromRoleId: "coordinator", toRoleId: "pantry", label: "Check-in call", channelId: "phone", alternate: false, mode: "spoken" },
-  { id: "coord-library", fromRoleId: "coordinator", toRoleId: "library", label: "Check-in call", channelId: "phone", alternate: false, mode: "spoken" },
+  { id: "coord-welcome", fromRoleId: "coordinator", toRoleId: "welcome", label: "Group chat", channelId: "internet", alternate: false, mode: "written", acknowledgementChannelId: "internet", acknowledgementMode: "written" },
+  { id: "welcome-programs", fromRoleId: "welcome", toRoleId: "programs", label: "Group chat", channelId: "internet", alternate: false, mode: "written", acknowledgementChannelId: "internet", acknowledgementMode: "written" },
+  { id: "coord-pantry", fromRoleId: "coordinator", toRoleId: "pantry", label: "Check-in call", channelId: "phone", alternate: false, mode: "spoken", acknowledgementChannelId: "phone", acknowledgementMode: "spoken" },
+  { id: "coord-library", fromRoleId: "coordinator", toRoleId: "library", label: "Check-in call", channelId: "phone", alternate: false, mode: "spoken", acknowledgementChannelId: "phone", acknowledgementMode: "spoken" },
   { id: "paper-welcome", fromRoleId: "coordinator", toRoleId: "welcome", label: "Printed notice", channelId: "paper", alternate: true, mode: "written" },
   { id: "paper-programs", fromRoleId: "welcome", toRoleId: "programs", label: "Printed relay", channelId: "paper", alternate: true, mode: "written" },
   { id: "runner-welcome", fromRoleId: "coordinator", toRoleId: "welcome", label: "Spoken relay", channelId: "in-person", alternate: true, mode: "spoken" },

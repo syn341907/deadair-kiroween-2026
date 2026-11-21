@@ -2,9 +2,17 @@
 
 [Open the live demo](https://syn341907.github.io/deadair-kiroween-2026/)
 
-A guided fictional communications-failure exercise for community-center, library, and other local-hub volunteers. Dead Air leads a facilitator through four steps: set a scene, break a channel, test a backup route, and turn the result into a one-page after-action sheet.
+Dead Air is a facilitator-led communications exercise studio for fictional community hubs. Break a channel, choose a backup, see whether each role has a modeled way to send an acknowledgment back, and leave with an action sheet. It never sends messages or gives emergency instructions.
 
-Dead Air is for practice and discussion only. It does not send messages, handle real emergencies, or provide emergency guidance. All roles and locations are fictional. Written/spoken labels are simplified exercise assumptions, not accessibility guarantees. Worksheet values stay in this page and are not sent to a Dead Air server or saved by the app. GitHub Pages may log standard visitor information, including IP addresses.
+## Try it
+
+1. Choose **Room change, dead Wi-Fi** or **Pickup entrance, silent line**.
+2. Read the fictional setup aloud and begin the outage.
+3. In **Patch**, enable Paper or In Person and compare delivery with acknowledgment paths.
+4. Reveal the second failure when the group is ready.
+5. In **Debrief**, record a next practice action, choose a fictional role owner and date, then print or save the one-page sheet.
+
+The full walkthrough takes under three minutes. Judges do not need an account.
 
 ## Run locally
 
@@ -15,31 +23,35 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. Choose a fictional scenario and read the facilitator card aloud. Advance through **Break** and **Restore**, switch Internet or Phone off, then try Volunteer relay or Paper dispatch. The board shows who is still isolated and calls out a route that does not fit its fictional recipient. In **Debrief**, write one change, assign a fictional role and practice date, then print or save the after-action sheet as a PDF.
-
-## Hosting setup
-
-GitHub Pages serves the public demo from the `dist/` build. The GitHub Actions workflow deploys on each push to `main`; it uses no secrets, paid APIs, or external runtime services.
-
-## Checks
+Vite prints the local URL. The build and focused domain checks are:
 
 ```sh
 npm test
 npm run build
 ```
 
-## How it works
+## Edit an exercise
 
-`src/domain/route-usability.ts` filters routes against each fictional recipient role’s accepted communication modes. The app passes usable routes to `src/domain/communication-network.ts`, which applies the failed-channel and active-alternate rules, then calculates reachability with breadth-first search. All data is bundled with the app or held in page memory. There are no runtime API requests, accounts, or backend.
+Use **Create a copy** or **Edit this fictional exercise** to change the scenario text, objective, inject, fictional roles, route modes, and routes. Export the exercise as JSON to keep it, then import that file later. The editor validates imported files and puts a 64 KB limit on them. Exercise data stays in page memory unless you export it; nothing is uploaded to Dead Air.
+
+Use fictional labels and locations. Written/spoken modes are simple scenario assumptions, not accessibility assessments. A modeled path means only that a route exists in the exercise data; it does not confirm a person received or understood a message.
+
+## How the model works
+
+`src/domain/route-usability.ts` filters routes by each recipient role’s declared modes. `src/domain/drill-analysis.ts` prepares the failed-channel and alternate-route inputs, then calls the Kiro-owned `src/domain/communication-network.ts` for reachability. Acknowledgment routes are modeled in the reverse direction, and the same analyzer is used from each role to check whether a route reaches the coordinator. The UI does not implement a second graph traversal.
+
+The app is a static Vite build. It has no runtime network requests, backend, account, analytics, AI service, or external asset dependency. GitHub Pages may record standard visitor information, including IP addresses.
+
+## Kiro development notes
+
+Kiro created the `communication-network` Spec from the interface contract, then implemented the BFS module and its focused tests. The repository tracks the Spec and steering files under `.kiro/`. The analyzer returns deterministic reachable and isolated role IDs; the UI and drill adapter use that exported contract without changing or copying its reachability algorithm.
+
+Other product work in this repository adds the fictional exercise package, JSON validation, delivery/acknowledgment preparation, facilitator flow, scenario editor, and presentation. The exact Kiro surface and tools used should be stated from the project’s own Kiro activity history in the submission write-up.
 
 ## Safety and privacy
 
-Use fictional role labels only. Dead Air is not an emergency response product or accessibility assessment. Its written/spoken modes are simplified scenario assumptions. Worksheet owner and date values are not persisted. GitHub Pages records visitor IP addresses in security logs.
+Dead Air is a practice and discussion tool, not a communications system, emergency response product, accessibility assessment, or source of emergency guidance. It does not message people. Do not enter real names, contact details, or sensitive information. Worksheet values are kept in page memory and are not persisted by the app.
 
-## Kiro
+## Hosting
 
-The `.kiro/` directory contains the `communication-network` Spec and project steering constraints. Kiro implemented `src/domain/communication-network.ts` and its focused tests. The tests use a small inline fixture and do not depend on the fictional sample map.
-
-## Judge instructions
-
-No account is required to use the app. In a short walkthrough: choose **A room change, mid-session**, read the scenario card, advance to **Break the line**, then to **Restore**, enable **Volunteer relay** and **Paper dispatch**, and observe the connected, isolated, and mismatched routes. Finish in **Debrief**, enter one next change and a fictional owner, then open the print dialog. A full group exercise takes about four minutes; the product walkthrough takes under three. The app is a practice and discussion tool only.
+The public demo is served from the repository’s GitHub Pages deployment. The production site is built from `dist/` by the repository workflow; no secrets or paid runtime services are used.
