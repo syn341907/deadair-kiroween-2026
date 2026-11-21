@@ -2,7 +2,7 @@
 
 [Open the live demo](https://syn341907.github.io/deadair-kiroween-2026/)
 
-A fictional communications-failure exercise for community-center, library, and other local-hub volunteers. A facilitator disables Internet or Phone, sees which fictional roles lose their path to the coordinator, tries alternate routes, and prints a one-page follow-up worksheet.
+A guided fictional communications-failure exercise for community-center, library, and other local-hub volunteers. Dead Air leads a facilitator through four steps: set a scene, break a channel, test a backup route, and turn the result into a one-page after-action sheet.
 
 Dead Air is for practice and discussion only. It does not send messages, handle real emergencies, or provide emergency guidance. All roles and locations are fictional. Written/spoken labels are simplified exercise assumptions, not accessibility guarantees. Worksheet values stay in this page and are not sent to a Dead Air server or saved by the app. GitHub Pages may log standard visitor information, including IP addresses.
 
@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. Choose **Internet**. Turn on **Volunteer relay** to see that its spoken routes do not fit the written-first roles, then turn on **Paper dispatch** to reconnect them. Choose **Phone** and turn on **Volunteer relay** to restore the spoken-first roles. Assign a fictional role and practice date, then print or save the follow-up worksheet as a PDF.
+Open the local URL printed by Vite. Choose a fictional scenario and read the facilitator card aloud. Advance through **Break** and **Restore**, switch Internet or Phone off, then try Volunteer relay or Paper dispatch. The board shows who is still isolated and calls out a route that does not fit its fictional recipient. In **Debrief**, write one change, assign a fictional role and practice date, then print or save the after-action sheet as a PDF.
 
 ## Hosting setup
 
@@ -42,4 +42,4 @@ The `.kiro/` directory contains the `communication-network` Spec and project ste
 
 ## Judge instructions
 
-No account is required to use the app. Use the fictional map to simulate a channel failure, try an alternate route, and print the follow-up worksheet. The app is a practice and discussion tool only.
+No account is required to use the app. In a short walkthrough: choose **A room change, mid-session**, read the scenario card, advance to **Break the line**, then to **Restore**, enable **Volunteer relay** and **Paper dispatch**, and observe the connected, isolated, and mismatched routes. Finish in **Debrief**, enter one next change and a fictional owner, then open the print dialog. A full group exercise takes about four minutes; the product walkthrough takes under three. The app is a practice and discussion tool only.

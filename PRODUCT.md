@@ -28,12 +28,13 @@ A facilitator uses the app on a laptop or phone with a group. The app starts wit
 
 ## Capabilities and Constraints
 
+- A four-phase facilitator flow supplies two scenario cards with read-aloud context and a discussion cue, then guides the group through channel failure, route choice, and debrief.
 - The facilitator can choose an Internet or Phone failure and activate a grouped paper or spoken alternate strategy.
 - Route-mode compatibility is evaluated against fictional recipient-role modes before the Kiro-owned analyzer calculates reachability.
 - Active but incompatible routes remain visible as gaps and do not count as usable paths.
 - Reachability is calculated by the Kiro-owned `communication-network` module over directed routes; two-way communication is represented by two routes.
 - The interface distinguishes roles reachable from the coordinator from isolated roles and incompatible route attempts.
-- A one-page print worksheet records the scenario, isolated roles, routes tried, mismatches, a fictional role owner, and a practice date.
+- State-specific debrief questions and an editable next action turn the exercise into a one-page after-action sheet with the scenario, connected and isolated roles, routes tried, mismatches, a fictional role owner, and a practice date.
 - App data stays in page memory; the app makes no runtime API requests and uses no accounts, backend, analytics, telemetry, runtime AI, or external data. The static host serves page assets and may log visitor IP addresses.
 - Total spend must remain $0. Do not depend on paid services, APIs, subscriptions, trials, required payment methods, custom domains, prize credits, or paid AI.
 - Judges must be able to use the demo without a Kiro account or payment.
