@@ -1,5 +1,7 @@
 # Dead Air
 
+[Open the live demo](https://syn341907.github.io/deadair-kiroween-2026/)
+
 A fictional communications-failure exercise for community-center, library, and other local-hub volunteers. A facilitator disables Internet or Phone, sees which fictional roles lose their path to the coordinator, tries alternate routes, and prints a one-page follow-up worksheet.
 
 Dead Air is for practice and discussion only. It does not send messages, handle real emergencies, or provide emergency guidance. All roles and locations are fictional. Written/spoken labels are simplified exercise assumptions, not accessibility guarantees. Worksheet values stay in page memory; nothing is sent or persisted.
@@ -17,7 +19,7 @@ Open the local URL printed by Vite. Choose **Internet**. Turn on **Volunteer rel
 
 ## Hosting setup
 
-The repository includes a GitHub Actions workflow for GitHub Pages. Once Pages is enabled, each push to `main` builds the static app and publishes `dist/`. The workflow uses no secrets, paid APIs, or external runtime services.
+GitHub Pages serves the public demo from the `dist/` build. The GitHub Actions workflow deploys on each push to `main`; it uses no secrets, paid APIs, or external runtime services.
 
 ## Checks
 
