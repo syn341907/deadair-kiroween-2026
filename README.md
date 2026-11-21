@@ -15,6 +15,10 @@ npm run dev
 
 Open the local URL printed by Vite. Choose **Internet**. Turn on **Volunteer relay** to see that its spoken routes do not fit the written-first roles, then turn on **Paper dispatch** to reconnect them. Choose **Phone** and turn on **Volunteer relay** to restore the spoken-first roles. Assign a fictional role and practice date, then print or save the follow-up worksheet as a PDF.
 
+## Hosting setup
+
+The repository includes a GitHub Actions workflow for GitHub Pages. Once Pages is enabled, each push to `main` builds the static app and publishes `dist/`. The workflow uses no secrets, paid APIs, or external runtime services.
+
 ## Checks
 
 ```sh
